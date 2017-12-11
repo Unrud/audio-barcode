@@ -38,15 +38,15 @@ impl Parameters {
         Partial{ params: self, count: 0, prev: 0., prevprev: 0. }
     }
 
-    pub fn mag(self, samples: &[i16]) -> f32 {
+    pub fn mag(self, samples: &[f32]) -> f32 {
         self.start().add(samples).finish_mag()
     }
 }
 
 impl Partial {
-    pub fn add(mut self, samples: &[i16]) -> Self {
+    pub fn add(mut self, samples: &[f32]) -> Self {
         for &sample in samples {
-            let this = self.params.term_coefficient * self.prev - self.prevprev + (sample as f32);
+            let this = self.params.term_coefficient * self.prev - self.prevprev + sample;
             self.prevprev = self.prev;
             self.prev = this;
         }
@@ -69,19 +69,19 @@ impl Partial {
 #[test]
 fn zero_data() {
     let p = Parameters::new(1800., 8000, 256);
-    assert!(p.start().add(&[0; 256]).finish_mag() == 0.);
-    assert!(p.start().add(&[0; 128]).add(&[0;128]).finish_mag() == 0.);
+    assert!(p.start().add(&[0.; 256]).finish_mag() == 0.);
+    assert!(p.start().add(&[0.; 128]).add(&[0.; 128]).finish_mag() == 0.);
 }
 
 #[test]
 fn sine() {
-    let mut buf = [0; 8000];
+    let mut buf = [0.; 8000];
     for &freq in [697., 1200., 1800., 1633.].iter() {
         // Generate a 1 second sine wave at freq hz
         let step = 1. / 8000.;
-        for sample in (0 .. 8000) {
+        for sample in 0..8000 {
             let time = sample as f32 * step;
-            buf[sample] = ((time * freq * PI * 2.).sin() * std::i16::MAX as f32) as i16;
+            buf[sample] = (time * freq * PI * 2.).sin();
         }
 
         let p = Parameters::new(freq, 8000, 8000);
