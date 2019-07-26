@@ -1,0 +1,54 @@
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+form, #log {
+  width: 100%;
+  max-width: 50em;
+}
+
+#log {
+  border: 1px solid black;
+  box-sizing: border-box;
+  margin: 0;
+  margin-top: 10px;
+  flex: 1 1 auto;
+  overflow: scroll;
+}
+
+#log .tx, #log .rx, #log .err {
+  padding: 5px 10px;
+  box-sizing: border-box;
+  border-bottom: 1px solid black;
+}
+
+#log .tx {
+  background: lightgreen;
+  text-align: right;
+}
+
+#log .rx {
+  font-weight: bold;
+}
+
+#log .err {
+  background: tomato;
+  font-weight: bold;
+}
+
+input, button {
+  display: block;
+  font-size: 120%;
+  width:100%;
+  box-sizing: border-box;
+}
