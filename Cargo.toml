@@ -3,6 +3,7 @@ name = "audio-barcode"
 description = "Send and receive small data packets over sound"
 version = "0.1.0"
 authors = ["Unrud <unrud@outlook.com>"]
+readme = "README.md"
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/unrud/audio-barcode"
