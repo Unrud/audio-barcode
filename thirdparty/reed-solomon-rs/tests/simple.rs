@@ -2,6 +2,7 @@ extern crate reed_solomon;
 
 use reed_solomon::Encoder;
 use reed_solomon::Decoder;
+use reed_solomon::GF2_8;
 
 const ECC_LEN: usize = 8;
 
@@ -10,8 +11,8 @@ fn helloworld() {
     let data = b"Hello, World!";
 
     // Create encoder and decoder
-    let enc = Encoder::new(ECC_LEN);
-    let dec = Decoder::new(ECC_LEN);
+    let enc = Encoder::<GF2_8>::new(ECC_LEN);
+    let dec = Decoder::<GF2_8>::new(ECC_LEN);
 
     // Encode data
     let encoded = enc.encode(&data[..]);
@@ -33,8 +34,8 @@ fn with_erasures() {
     let data = b"Hello, World!";
 
     // Create encoder and decoder
-    let enc = Encoder::new(ECC_LEN);
-    let dec = Decoder::new(ECC_LEN);
+    let enc = Encoder::<GF2_8>::new(ECC_LEN);
+    let dec = Decoder::<GF2_8>::new(ECC_LEN);
 
     // Encode data
     let encoded = enc.encode(&data[..]);

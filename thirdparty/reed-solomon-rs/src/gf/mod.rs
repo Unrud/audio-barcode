@@ -2,131 +2,335 @@
 pub mod poly;
 pub mod poly_math;
 
-const EXP_SIZE: usize = 512;
-pub static EXP: [u8; EXP_SIZE] = [
-    0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80, 0x1d, 0x3a, 0x74, 0xe8, 0xcd, 0x87, 0x13, 0x26, 0x4c,
-    0x98, 0x2d, 0x5a, 0xb4, 0x75, 0xea, 0xc9, 0x8f, 0x3, 0x6, 0xc, 0x18, 0x30, 0x60, 0xc0, 0x9d,
-    0x27, 0x4e, 0x9c, 0x25, 0x4a, 0x94, 0x35, 0x6a, 0xd4, 0xb5, 0x77, 0xee, 0xc1, 0x9f, 0x23, 0x46,
-    0x8c, 0x5, 0xa, 0x14, 0x28, 0x50, 0xa0, 0x5d, 0xba, 0x69, 0xd2, 0xb9, 0x6f, 0xde, 0xa1, 0x5f,
-    0xbe, 0x61, 0xc2, 0x99, 0x2f, 0x5e, 0xbc, 0x65, 0xca, 0x89, 0xf, 0x1e, 0x3c, 0x78, 0xf0, 0xfd,
-    0xe7, 0xd3, 0xbb, 0x6b, 0xd6, 0xb1, 0x7f, 0xfe, 0xe1, 0xdf, 0xa3, 0x5b, 0xb6, 0x71, 0xe2, 0xd9,
-    0xaf, 0x43, 0x86, 0x11, 0x22, 0x44, 0x88, 0xd, 0x1a, 0x34, 0x68, 0xd0, 0xbd, 0x67, 0xce, 0x81,
-    0x1f, 0x3e, 0x7c, 0xf8, 0xed, 0xc7, 0x93, 0x3b, 0x76, 0xec, 0xc5, 0x97, 0x33, 0x66, 0xcc, 0x85,
-    0x17, 0x2e, 0x5c, 0xb8, 0x6d, 0xda, 0xa9, 0x4f, 0x9e, 0x21, 0x42, 0x84, 0x15, 0x2a, 0x54, 0xa8,
-    0x4d, 0x9a, 0x29, 0x52, 0xa4, 0x55, 0xaa, 0x49, 0x92, 0x39, 0x72, 0xe4, 0xd5, 0xb7, 0x73, 0xe6,
-    0xd1, 0xbf, 0x63, 0xc6, 0x91, 0x3f, 0x7e, 0xfc, 0xe5, 0xd7, 0xb3, 0x7b, 0xf6, 0xf1, 0xff, 0xe3,
-    0xdb, 0xab, 0x4b, 0x96, 0x31, 0x62, 0xc4, 0x95, 0x37, 0x6e, 0xdc, 0xa5, 0x57, 0xae, 0x41, 0x82,
-    0x19, 0x32, 0x64, 0xc8, 0x8d, 0x7, 0xe, 0x1c, 0x38, 0x70, 0xe0, 0xdd, 0xa7, 0x53, 0xa6, 0x51,
-    0xa2, 0x59, 0xb2, 0x79, 0xf2, 0xf9, 0xef, 0xc3, 0x9b, 0x2b, 0x56, 0xac, 0x45, 0x8a, 0x9, 0x12,
-    0x24, 0x48, 0x90, 0x3d, 0x7a, 0xf4, 0xf5, 0xf7, 0xf3, 0xfb, 0xeb, 0xcb, 0x8b, 0xb, 0x16, 0x2c,
-    0x58, 0xb0, 0x7d, 0xfa, 0xe9, 0xcf, 0x83, 0x1b, 0x36, 0x6c, 0xd8, 0xad, 0x47, 0x8e, 0x1, 0x2,
-    0x4, 0x8, 0x10, 0x20, 0x40, 0x80, 0x1d, 0x3a, 0x74, 0xe8, 0xcd, 0x87, 0x13, 0x26, 0x4c, 0x98,
-    0x2d, 0x5a, 0xb4, 0x75, 0xea, 0xc9, 0x8f, 0x3, 0x6, 0xc, 0x18, 0x30, 0x60, 0xc0, 0x9d, 0x27,
-    0x4e, 0x9c, 0x25, 0x4a, 0x94, 0x35, 0x6a, 0xd4, 0xb5, 0x77, 0xee, 0xc1, 0x9f, 0x23, 0x46, 0x8c,
-    0x5, 0xa, 0x14, 0x28, 0x50, 0xa0, 0x5d, 0xba, 0x69, 0xd2, 0xb9, 0x6f, 0xde, 0xa1, 0x5f, 0xbe,
-    0x61, 0xc2, 0x99, 0x2f, 0x5e, 0xbc, 0x65, 0xca, 0x89, 0xf, 0x1e, 0x3c, 0x78, 0xf0, 0xfd, 0xe7,
-    0xd3, 0xbb, 0x6b, 0xd6, 0xb1, 0x7f, 0xfe, 0xe1, 0xdf, 0xa3, 0x5b, 0xb6, 0x71, 0xe2, 0xd9, 0xaf,
-    0x43, 0x86, 0x11, 0x22, 0x44, 0x88, 0xd, 0x1a, 0x34, 0x68, 0xd0, 0xbd, 0x67, 0xce, 0x81, 0x1f,
-    0x3e, 0x7c, 0xf8, 0xed, 0xc7, 0x93, 0x3b, 0x76, 0xec, 0xc5, 0x97, 0x33, 0x66, 0xcc, 0x85, 0x17,
-    0x2e, 0x5c, 0xb8, 0x6d, 0xda, 0xa9, 0x4f, 0x9e, 0x21, 0x42, 0x84, 0x15, 0x2a, 0x54, 0xa8, 0x4d,
-    0x9a, 0x29, 0x52, 0xa4, 0x55, 0xaa, 0x49, 0x92, 0x39, 0x72, 0xe4, 0xd5, 0xb7, 0x73, 0xe6, 0xd1,
-    0xbf, 0x63, 0xc6, 0x91, 0x3f, 0x7e, 0xfc, 0xe5, 0xd7, 0xb3, 0x7b, 0xf6, 0xf1, 0xff, 0xe3, 0xdb,
-    0xab, 0x4b, 0x96, 0x31, 0x62, 0xc4, 0x95, 0x37, 0x6e, 0xdc, 0xa5, 0x57, 0xae, 0x41, 0x82, 0x19,
-    0x32, 0x64, 0xc8, 0x8d, 0x7, 0xe, 0x1c, 0x38, 0x70, 0xe0, 0xdd, 0xa7, 0x53, 0xa6, 0x51, 0xa2,
-    0x59, 0xb2, 0x79, 0xf2, 0xf9, 0xef, 0xc3, 0x9b, 0x2b, 0x56, 0xac, 0x45, 0x8a, 0x9, 0x12, 0x24,
-    0x48, 0x90, 0x3d, 0x7a, 0xf4, 0xf5, 0xf7, 0xf3, 0xfb, 0xeb, 0xcb, 0x8b, 0xb, 0x16, 0x2c, 0x58,
-    0xb0, 0x7d, 0xfa, 0xe9, 0xcf, 0x83, 0x1b, 0x36, 0x6c, 0xd8, 0xad, 0x47, 0x8e, 0x1, 0x2
-];
-
-const LOG_SIZE: usize = 256; 
-pub static LOG: [u8; LOG_SIZE] = [
-    0x0, 0x0, 0x1, 0x19, 0x2, 0x32, 0x1a, 0xc6, 0x3, 0xdf, 0x33, 0xee, 0x1b, 0x68, 0xc7, 0x4b, 0x4,
-    0x64, 0xe0, 0xe, 0x34, 0x8d, 0xef, 0x81, 0x1c, 0xc1, 0x69, 0xf8, 0xc8, 0x8, 0x4c, 0x71, 0x5,
-    0x8a, 0x65, 0x2f, 0xe1, 0x24, 0xf, 0x21, 0x35, 0x93, 0x8e, 0xda, 0xf0, 0x12, 0x82, 0x45, 0x1d,
-    0xb5, 0xc2, 0x7d, 0x6a, 0x27, 0xf9, 0xb9, 0xc9, 0x9a, 0x9, 0x78, 0x4d, 0xe4, 0x72, 0xa6, 0x6,
-    0xbf, 0x8b, 0x62, 0x66, 0xdd, 0x30, 0xfd, 0xe2, 0x98, 0x25, 0xb3, 0x10, 0x91, 0x22, 0x88, 0x36,
-    0xd0, 0x94, 0xce, 0x8f, 0x96, 0xdb, 0xbd, 0xf1, 0xd2, 0x13, 0x5c, 0x83, 0x38, 0x46, 0x40, 0x1e,
-    0x42, 0xb6, 0xa3, 0xc3, 0x48, 0x7e, 0x6e, 0x6b, 0x3a, 0x28, 0x54, 0xfa, 0x85, 0xba, 0x3d, 0xca,
-    0x5e, 0x9b, 0x9f, 0xa, 0x15, 0x79, 0x2b, 0x4e, 0xd4, 0xe5, 0xac, 0x73, 0xf3, 0xa7, 0x57, 0x7,
-    0x70, 0xc0, 0xf7, 0x8c, 0x80, 0x63, 0xd, 0x67, 0x4a, 0xde, 0xed, 0x31, 0xc5, 0xfe, 0x18, 0xe3,
-    0xa5, 0x99, 0x77, 0x26, 0xb8, 0xb4, 0x7c, 0x11, 0x44, 0x92, 0xd9, 0x23, 0x20, 0x89, 0x2e, 0x37,
-    0x3f, 0xd1, 0x5b, 0x95, 0xbc, 0xcf, 0xcd, 0x90, 0x87, 0x97, 0xb2, 0xdc, 0xfc, 0xbe, 0x61, 0xf2,
-    0x56, 0xd3, 0xab, 0x14, 0x2a, 0x5d, 0x9e, 0x84, 0x3c, 0x39, 0x53, 0x47, 0x6d, 0x41, 0xa2, 0x1f,
-    0x2d, 0x43, 0xd8, 0xb7, 0x7b, 0xa4, 0x76, 0xc4, 0x17, 0x49, 0xec, 0x7f, 0xc, 0x6f, 0xf6, 0x6c,
-    0xa1, 0x3b, 0x52, 0x29, 0x9d, 0x55, 0xaa, 0xfb, 0x60, 0x86, 0xb1, 0xbb, 0xcc, 0x3e, 0x5a, 0xcb,
-    0x59, 0x5f, 0xb0, 0x9c, 0xa9, 0xa0, 0x51, 0xb, 0xf5, 0x16, 0xeb, 0x7a, 0x75, 0x2c, 0xd7, 0x4f,
-    0xae, 0xd5, 0xe9, 0xe6, 0xe7, 0xad, 0xe8, 0x74, 0xd6, 0xf4, 0xea, 0xa8, 0x50, 0x58, 0xaf
-];
-
 /// Primitive operations over Galua Fields
 
-#[allow(dead_code)]
-#[inline]
-pub fn add(x: u8, y: u8) -> u8 {
-    x ^ y
-}
+#[allow(non_camel_case_types)]
+pub trait GF2_X {
+    #[inline]
+    fn get_field_charac() -> usize;
+    #[inline]
+    fn get_exp_size() -> usize;
+    #[inline]
+    fn get_exp(i: usize) -> u8;
+    #[inline]
+    fn get_log_size() -> usize;
+    #[inline]
+    fn get_log(i: usize) -> u8;
 
-#[inline]
-pub fn sub(x: u8, y: u8) -> u8 {
-    x ^ y
-}
+    #[inline]
+    fn add(x: u8, y: u8) -> u8 {
+        x ^ y
+    }
 
-#[inline]
-pub fn mul(x: u8, y: u8) -> u8 {
-    if x == 0 || y == 0 {
-        0
-    } else {
-        let log_x = uncheck!(LOG[x as usize]);
-        let log_y = uncheck!(LOG[y as usize]);
-        let exp_index = log_x as usize + 
-                        log_y as usize;
+    #[inline]
+    fn sub(x: u8, y: u8) -> u8 {
+        x ^ y
+    }
 
-        uncheck!(EXP[exp_index])
+    #[inline]
+    fn mul(x: u8, y: u8) -> u8 {
+        if x == 0 || y == 0 {
+            0
+        } else {
+            let log_x = Self::get_log(x as usize);
+            let log_y = Self::get_log(y as usize);
+            let exp_index = log_x as usize + 
+                            log_y as usize;
+
+            Self::get_exp(exp_index)
+        }
+    }
+
+    #[inline]
+    fn div(x: u8, y: u8) -> u8 {
+        debug_assert!(y != 0);
+        if x == 0 {
+            0
+        } else {
+            let log_x = Self::get_log(x as usize) as usize;
+            let log_y = Self::get_log(y as usize) as usize;
+            let exp_index = (log_x + Self::get_field_charac() - log_y) % Self::get_field_charac();
+
+            Self::get_exp(exp_index)
+        }
+    }
+
+    #[inline]
+    fn pow(x: u8, power: i32) -> u8 {
+        let mut i = Self::get_log(x as usize) as i32
+        * power
+        % Self::get_field_charac() as i32;
+
+        if i < 0 {
+            i += Self::get_field_charac() as i32;
+        }
+
+        Self::get_exp(i as usize)
+    }
+
+    #[inline]
+    fn inverse(x: u8) -> u8 {
+        let exp_index = Self::get_field_charac() as u8 - Self::get_log(x as usize);
+        Self::get_exp(exp_index as usize)
     }
 }
 
-#[inline]
-pub fn div(x: u8, y: u8) -> u8 {
-    debug_assert!(y != 0);
-    if x == 0 {
-        0
-    } else {
-        let log_x = uncheck!(LOG[x as usize]) as usize;
-        let log_y = uncheck!(LOG[y as usize]) as usize;
-        let exp_index = (log_x + 255 - log_y) % 255;
+/// GF(2^3)
+#[derive(Debug)]
+pub struct GF2_3();
 
-        uncheck!(EXP[exp_index])
-    }
+impl GF2_3 {
+    const FIELD_CHARAC: usize = 7;  //2usize.pow(3) - 1;
+
+    const EXP_SIZE: usize = (Self::FIELD_CHARAC + 1) * 2;
+    const EXP: [u8; Self::EXP_SIZE] = [
+        1, 2, 4, 3, 6, 7, 5, 1, 2, 4, 3, 6, 7, 5, 1, 2
+    ];
+
+    const LOG_SIZE: usize = Self::FIELD_CHARAC + 1; 
+    const LOG: [u8; Self::LOG_SIZE] = [
+        0, 0, 1, 3, 2, 6, 4, 5
+    ];
 }
 
-#[inline]
-pub fn pow(x: u8, power: i32) -> u8 {
-    let mut i = uncheck!(LOG[x as usize]) as i32
-            * power
-            % 255;
-
-    if i < 0 {
-        i += 255; 
-    }
-
-    uncheck!(EXP[i as usize])
+impl GF2_X for GF2_3 {
+    #[inline]
+    fn get_field_charac() -> usize { Self::FIELD_CHARAC }
+    #[inline]
+    fn get_exp_size() -> usize { Self::EXP_SIZE }
+    #[inline]
+    fn get_exp(i: usize) -> u8 { uncheck!(Self::EXP[i]) }
+    #[inline]
+    fn get_log_size() -> usize { Self::LOG_SIZE }
+    #[inline]
+    fn get_log(i: usize) -> u8 { uncheck!(Self::LOG[i]) }
 }
 
-#[inline]
-pub fn inverse(x: u8) -> u8 {
-    let exp_index = 255 - uncheck!(LOG[x as usize]);
-    uncheck!(EXP[exp_index as usize])
+/// GF(2^4)
+#[derive(Debug)]
+pub struct GF2_4();
+
+impl GF2_4 {
+    const FIELD_CHARAC: usize = 15;  //2usize.pow(4) - 1;
+
+    const EXP_SIZE: usize = (Self::FIELD_CHARAC + 1) * 2;
+    const EXP: [u8; Self::EXP_SIZE] = [
+        1, 2, 4, 8, 3, 6, 12, 11, 5, 10, 7, 14, 15, 13, 9, 1, 2, 4, 8, 3, 6, 12, 11, 5, 10, 7, 14,
+        15, 13, 9, 1, 2
+    ];
+
+    const LOG_SIZE: usize = Self::FIELD_CHARAC + 1; 
+    const LOG: [u8; Self::LOG_SIZE] = [
+        0, 0, 1, 4, 2, 8, 5, 10, 3, 14, 9, 7, 6, 13, 11, 12
+    ];
+}
+
+impl GF2_X for GF2_4 {
+    #[inline]
+    fn get_field_charac() -> usize { Self::FIELD_CHARAC }
+    #[inline]
+    fn get_exp_size() -> usize { Self::EXP_SIZE }
+    #[inline]
+    fn get_exp(i: usize) -> u8 { uncheck!(Self::EXP[i]) }
+    #[inline]
+    fn get_log_size() -> usize { Self::LOG_SIZE }
+    #[inline]
+    fn get_log(i: usize) -> u8 { uncheck!(Self::LOG[i]) }
+}
+
+/// GF(2^5)
+#[derive(Debug)]
+pub struct GF2_5();
+
+impl GF2_5 {
+    const FIELD_CHARAC: usize = 31;  //2usize.pow(5) - 1;
+
+    const EXP_SIZE: usize = (Self::FIELD_CHARAC + 1) * 2;
+    const EXP: [u8; Self::EXP_SIZE] = [
+        1, 2, 4, 8, 16, 5, 10, 20, 13, 26, 17, 7, 14, 28, 29, 31, 27, 19, 3, 6, 12, 24, 21, 15, 30,
+        25, 23, 11, 22, 9, 18, 1, 2, 4, 8, 16, 5, 10, 20, 13, 26, 17, 7, 14, 28, 29, 31, 27, 19, 3,
+        6, 12, 24, 21, 15, 30, 25, 23, 11, 22, 9, 18, 1, 2
+    ];
+
+    const LOG_SIZE: usize = Self::FIELD_CHARAC + 1; 
+    const LOG: [u8; Self::LOG_SIZE] = [
+        0, 0, 1, 18, 2, 5, 19, 11, 3, 29, 6, 27, 20, 8, 12, 23, 4, 10, 30, 17, 7, 22, 28, 26, 21, 25,
+        9, 16, 13, 14, 24, 15
+    ];
+}
+
+impl GF2_X for GF2_5 {
+    #[inline]
+    fn get_field_charac() -> usize { Self::FIELD_CHARAC }
+    #[inline]
+    fn get_exp_size() -> usize { Self::EXP_SIZE }
+    #[inline]
+    fn get_exp(i: usize) -> u8 { uncheck!(Self::EXP[i]) }
+    #[inline]
+    fn get_log_size() -> usize { Self::LOG_SIZE }
+    #[inline]
+    fn get_log(i: usize) -> u8 { uncheck!(Self::LOG[i]) }
+}
+
+/// GF(2^6)
+#[derive(Debug)]
+pub struct GF2_6();
+
+impl GF2_6 {
+    const FIELD_CHARAC: usize = 63;  //2usize.pow(6) - 1;
+
+    const EXP_SIZE: usize = (Self::FIELD_CHARAC + 1) * 2;
+    const EXP: [u8; Self::EXP_SIZE] = [
+        1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 35, 5, 10, 20, 40, 19, 38, 15, 30, 60, 59, 53, 41, 17, 34,
+        7, 14, 28, 56, 51, 37, 9, 18, 36, 11, 22, 44, 27, 54, 47, 29, 58, 55, 45, 25, 50, 39, 13, 26, 52,
+        43, 21, 42, 23, 46, 31, 62, 63, 61, 57, 49, 33, 1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 35, 5, 10,
+        20, 40, 19, 38, 15, 30, 60, 59, 53, 41, 17, 34, 7, 14, 28, 56, 51, 37, 9, 18, 36, 11, 22, 44, 27,
+        54, 47, 29, 58, 55, 45, 25, 50, 39, 13, 26, 52, 43, 21, 42, 23, 46, 31, 62, 63, 61, 57, 49, 33, 1, 2
+    ];
+
+    const LOG_SIZE: usize = Self::FIELD_CHARAC + 1; 
+    const LOG: [u8; Self::LOG_SIZE] = [
+        0, 0, 1, 6, 2, 12, 7, 26, 3, 32, 13, 35, 8, 48, 27, 18, 4, 24, 33, 16, 14, 52, 36, 54, 9, 45, 49,
+        38, 28, 41, 19, 56, 5, 62, 25, 11, 34, 31, 17, 47, 15, 23, 53, 51, 37, 44, 55, 40, 10, 61, 46, 30,
+        50, 22, 39, 43, 29, 60, 42, 21, 20, 59, 57, 58
+    ];
+}
+
+impl GF2_X for GF2_6 {
+    #[inline]
+    fn get_field_charac() -> usize { Self::FIELD_CHARAC }
+    #[inline]
+    fn get_exp_size() -> usize { Self::EXP_SIZE }
+    #[inline]
+    fn get_exp(i: usize) -> u8 { uncheck!(Self::EXP[i]) }
+    #[inline]
+    fn get_log_size() -> usize { Self::LOG_SIZE }
+    #[inline]
+    fn get_log(i: usize) -> u8 { uncheck!(Self::LOG[i]) }
+}
+
+/// GF(2^7)
+#[derive(Debug)]
+pub struct GF2_7();
+
+impl GF2_7 {
+    const FIELD_CHARAC: usize = 127;  //2usize.pow(7) - 1;
+
+    const EXP_SIZE: usize = (Self::FIELD_CHARAC + 1) * 2;
+    const EXP: [u8; Self::EXP_SIZE] = [
+        1, 2, 4, 8, 16, 32, 64, 3, 6, 12, 24, 48, 96, 67, 5, 10, 20, 40, 80, 35, 70, 15, 30, 60, 120, 115,
+        101, 73, 17, 34, 68, 11, 22, 44, 88, 51, 102, 79, 29, 58, 116, 107, 85, 41, 82, 39, 78, 31, 62,
+        124, 123, 117, 105, 81, 33, 66, 7, 14, 28, 56, 112, 99, 69, 9, 18, 36, 72, 19, 38, 76, 27, 54, 108,
+        91, 53, 106, 87, 45, 90, 55, 110, 95, 61, 122, 119, 109, 89, 49, 98, 71, 13, 26, 52, 104, 83, 37,
+        74, 23, 46, 92, 59, 118, 111, 93, 57, 114, 103, 77, 25, 50, 100, 75, 21, 42, 84, 43, 86, 47, 94,
+        63, 126, 127, 125, 121, 113, 97, 65, 1, 2, 4, 8, 16, 32, 64, 3, 6, 12, 24, 48, 96, 67, 5, 10, 20,
+        40, 80, 35, 70, 15, 30, 60, 120, 115, 101, 73, 17, 34, 68, 11, 22, 44, 88, 51, 102, 79, 29, 58, 116,
+        107, 85, 41, 82, 39, 78, 31, 62, 124, 123, 117, 105, 81, 33, 66, 7, 14, 28, 56, 112, 99, 69, 9, 18,
+        36, 72, 19, 38, 76, 27, 54, 108, 91, 53, 106, 87, 45, 90, 55, 110, 95, 61, 122, 119, 109, 89, 49, 98,
+        71, 13, 26, 52, 104, 83, 37, 74, 23, 46, 92, 59, 118, 111, 93, 57, 114, 103, 77, 25, 50, 100, 75, 21,
+        42, 84, 43, 86, 47, 94, 63, 126, 127, 125, 121, 113, 97, 65, 1, 2
+    ];
+
+    const LOG_SIZE: usize = Self::FIELD_CHARAC + 1; 
+    const LOG: [u8; Self::LOG_SIZE] = [
+        0, 0, 1, 7, 2, 14, 8, 56, 3, 63, 15, 31, 9, 90, 57, 21, 4, 28, 64, 67, 16, 112, 32, 97, 10, 108,
+        91, 70, 58, 38, 22, 47, 5, 54, 29, 19, 65, 95, 68, 45, 17, 43, 113, 115, 33, 77, 98, 117, 11, 87,
+        109, 35, 92, 74, 71, 79, 59, 104, 39, 100, 23, 82, 48, 119, 6, 126, 55, 13, 30, 62, 20, 89, 66,
+        27, 96, 111, 69, 107, 46, 37, 18, 53, 44, 94, 114, 42, 116, 76, 34, 86, 78, 73, 99, 103, 118, 81,
+        12, 125, 88, 61, 110, 26, 36, 106, 93, 52, 75, 41, 72, 85, 80, 102, 60, 124, 105, 25, 40, 51, 101,
+        84, 24, 123, 83, 50, 49, 122, 120, 121
+    ];
+}
+
+impl GF2_X for GF2_7 {
+    #[inline]
+    fn get_field_charac() -> usize { Self::FIELD_CHARAC }
+    #[inline]
+    fn get_exp_size() -> usize { Self::EXP_SIZE }
+    #[inline]
+    fn get_exp(i: usize) -> u8 { uncheck!(Self::EXP[i]) }
+    #[inline]
+    fn get_log_size() -> usize { Self::LOG_SIZE }
+    #[inline]
+    fn get_log(i: usize) -> u8 { uncheck!(Self::LOG[i]) }
+}
+
+/// GF(2^8)
+#[derive(Debug)]
+pub struct GF2_8();
+
+impl GF2_8 {
+    const FIELD_CHARAC: usize = 255;  //2usize.pow(8) - 1;
+
+    const EXP_SIZE: usize = (Self::FIELD_CHARAC + 1) * 2;
+    const EXP: [u8; Self::EXP_SIZE] = [
+        1, 2, 4, 8, 16, 32, 64, 128, 29, 58, 116, 232, 205, 135, 19, 38, 76, 152, 45, 90, 180, 117,
+        234, 201, 143, 3, 6, 12, 24, 48, 96, 192, 157, 39, 78, 156, 37, 74, 148, 53, 106, 212, 181,
+        119, 238, 193, 159, 35, 70, 140, 5, 10, 20, 40, 80, 160, 93, 186, 105, 210, 185, 111, 222,
+        161, 95, 190, 97, 194, 153, 47, 94, 188, 101, 202, 137, 15, 30, 60, 120, 240, 253, 231, 211,
+        187, 107, 214, 177, 127, 254, 225, 223, 163, 91, 182, 113, 226, 217, 175, 67, 134, 17, 34,
+        68, 136, 13, 26, 52, 104, 208, 189, 103, 206, 129, 31, 62, 124, 248, 237, 199, 147, 59, 118,
+        236, 197, 151, 51, 102, 204, 133, 23, 46, 92, 184, 109, 218, 169, 79, 158, 33, 66, 132, 21,
+        42, 84, 168, 77, 154, 41, 82, 164, 85, 170, 73, 146, 57, 114, 228, 213, 183, 115, 230, 209,
+        191, 99, 198, 145, 63, 126, 252, 229, 215, 179, 123, 246, 241, 255, 227, 219, 171, 75, 150,
+        49, 98, 196, 149, 55, 110, 220, 165, 87, 174, 65, 130, 25, 50, 100, 200, 141, 7, 14, 28, 56,
+        112, 224, 221, 167, 83, 166, 81, 162, 89, 178, 121, 242, 249, 239, 195, 155, 43, 86, 172, 69,
+        138, 9, 18, 36, 72, 144, 61, 122, 244, 245, 247, 243, 251, 235, 203, 139, 11, 22, 44, 88, 176,
+        125, 250, 233, 207, 131, 27, 54, 108, 216, 173, 71, 142, 1, 2, 4, 8, 16, 32, 64, 128, 29, 58,
+        116, 232, 205, 135, 19, 38, 76, 152, 45, 90, 180, 117, 234, 201, 143, 3, 6, 12, 24, 48, 96,
+        192, 157, 39, 78, 156, 37, 74, 148, 53, 106, 212, 181, 119, 238, 193, 159, 35, 70, 140, 5, 10,
+        20, 40, 80, 160, 93, 186, 105, 210, 185, 111, 222, 161, 95, 190, 97, 194, 153, 47, 94, 188,
+        101, 202, 137, 15, 30, 60, 120, 240, 253, 231, 211, 187, 107, 214, 177, 127, 254, 225, 223,
+        163, 91, 182, 113, 226, 217, 175, 67, 134, 17, 34, 68, 136, 13, 26, 52, 104, 208, 189, 103,
+        206, 129, 31, 62, 124, 248, 237, 199, 147, 59, 118, 236, 197, 151, 51, 102, 204, 133, 23, 46,
+        92, 184, 109, 218, 169, 79, 158, 33, 66, 132, 21, 42, 84, 168, 77, 154, 41, 82, 164, 85, 170,
+        73, 146, 57, 114, 228, 213, 183, 115, 230, 209, 191, 99, 198, 145, 63, 126, 252, 229, 215,
+        179, 123, 246, 241, 255, 227, 219, 171, 75, 150, 49, 98, 196, 149, 55, 110, 220, 165, 87,
+        174, 65, 130, 25, 50, 100, 200, 141, 7, 14, 28, 56, 112, 224, 221, 167, 83, 166, 81, 162, 89,
+        178, 121, 242, 249, 239, 195, 155, 43, 86, 172, 69, 138, 9, 18, 36, 72, 144, 61, 122, 244,
+        245, 247, 243, 251, 235, 203, 139, 11, 22, 44, 88, 176, 125, 250, 233, 207, 131, 27, 54, 108,
+        216, 173, 71, 142, 1, 2
+    ];
+
+    const LOG_SIZE: usize = Self::FIELD_CHARAC + 1; 
+    const LOG: [u8; Self::LOG_SIZE] = [
+        0, 0, 1, 25, 2, 50, 26, 198, 3, 223, 51, 238, 27, 104, 199, 75, 4, 100, 224, 14, 52, 141, 239,
+        129, 28, 193, 105, 248, 200, 8, 76, 113, 5, 138, 101, 47, 225, 36, 15, 33, 53, 147, 142, 218,
+        240, 18, 130, 69, 29, 181, 194, 125, 106, 39, 249, 185, 201, 154, 9, 120, 77, 228, 114, 166, 6,
+        191, 139, 98, 102, 221, 48, 253, 226, 152, 37, 179, 16, 145, 34, 136, 54, 208, 148, 206, 143,
+        150, 219, 189, 241, 210, 19, 92, 131, 56, 70, 64, 30, 66, 182, 163, 195, 72, 126, 110, 107, 58,
+        40, 84, 250, 133, 186, 61, 202, 94, 155, 159, 10, 21, 121, 43, 78, 212, 229, 172, 115, 243, 167,
+        87, 7, 112, 192, 247, 140, 128, 99, 13, 103, 74, 222, 237, 49, 197, 254, 24, 227, 165, 153, 119,
+        38, 184, 180, 124, 17, 68, 146, 217, 35, 32, 137, 46, 55, 63, 209, 91, 149, 188, 207, 205, 144,
+        135, 151, 178, 220, 252, 190, 97, 242, 86, 211, 171, 20, 42, 93, 158, 132, 60, 57, 83, 71, 109,
+        65, 162, 31, 45, 67, 216, 183, 123, 164, 118, 196, 23, 73, 236, 127, 12, 111, 246, 108, 161, 59,
+        82, 41, 157, 85, 170, 251, 96, 134, 177, 187, 204, 62, 90, 203, 89, 95, 176, 156, 169, 160, 81,
+        11, 245, 22, 235, 122, 117, 44, 215, 79, 174, 213, 233, 230, 231, 173, 232, 116, 214, 244, 234,
+        168, 80, 88, 175
+    ];
+}
+
+impl GF2_X for GF2_8 {
+    #[inline]
+    fn get_field_charac() -> usize { Self::FIELD_CHARAC }
+    #[inline]
+    fn get_exp_size() -> usize { Self::EXP_SIZE }
+    #[inline]
+    fn get_exp(i: usize) -> u8 { uncheck!(Self::EXP[i]) }
+    #[inline]
+    fn get_log_size() -> usize { Self::LOG_SIZE }
+    #[inline]
+    fn get_log(i: usize) -> u8 { uncheck!(Self::LOG[i]) }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::EXP;
-    use super::LOG;
-    use super::LOG_SIZE;
+    use super::GF2_8;
+    use super::GF2_X;
     
     #[test]
     fn add() {
-        let answers: [u8; LOG_SIZE] = [
+        let answers: [u8; GF2_8::LOG_SIZE] = [
             1, 2, 5, 17, 18, 18, 90, 70, 30, 229, 71, 6, 214, 239, 212, 109, 
             72, 252, 205, 84, 128, 248, 5, 72, 147, 194, 111, 244, 208, 56, 44, 177, 
             152, 173, 43, 179, 196, 110, 155, 20, 95, 71, 59, 173, 30, 211, 29, 102, 
@@ -145,8 +349,8 @@ mod tests {
             99, 246, 101, 148, 28, 14, 98, 107, 111, 224, 152, 50, 5, 23, 214, 174
         ]; 
 
-        for i in 0..LOG_SIZE {
-            assert_eq!(super::add(LOG[i], EXP[i]), answers[i]);
+        for i in 0..GF2_8::LOG_SIZE {
+            assert_eq!(GF2_8::add(GF2_8::LOG[i], GF2_8::EXP[i]), answers[i]);
         }
     }
 
@@ -157,7 +361,7 @@ mod tests {
 
     #[test]
     fn mul() {
-        let answers: [u8; LOG_SIZE] = [
+        let answers: [u8; GF2_8::LOG_SIZE] = [
             0, 0, 4, 200, 32, 14, 206, 179, 39, 134, 169, 160, 32, 59, 184, 50, 
             45, 121, 69, 43, 102, 43, 139, 169, 18, 94, 107, 84, 18, 157, 159, 51, 
             211, 1, 52, 13, 51, 128, 31, 219, 240, 230, 212, 219, 197, 19, 11, 135, 
@@ -176,14 +380,14 @@ mod tests {
             118, 227, 168, 243, 164, 188, 125, 8, 8, 240, 36, 45, 21, 20, 44, 175,
         ]; 
 
-        for i in 0..LOG_SIZE {
-            assert_eq!(super::mul(LOG[i], EXP[i]), answers[i]);
+        for i in 0..GF2_8::LOG_SIZE {
+            assert_eq!(GF2_8::mul(GF2_8::LOG[i], GF2_8::EXP[i]), answers[i]);
         }
     }
 
     #[test]
     fn div() {
-        let answers: [u8; LOG_SIZE] = [
+        let answers: [u8; GF2_8::LOG_SIZE] = [
             0, 0, 71, 174, 173, 87, 134, 213, 152, 231, 124, 39, 203, 113, 13, 198, 
             88, 171, 55, 150, 177, 227, 25, 225, 227, 180, 157, 225, 252, 122, 88, 161, 
             45, 87, 148, 78, 40, 165, 74, 134, 142, 120, 121, 163, 156, 75, 154, 241, 
@@ -202,14 +406,14 @@ mod tests {
             170, 221, 215, 4, 179, 163, 64, 90, 152, 163, 235, 6, 41, 93, 176, 175,
         ]; 
 
-        for i in 0..LOG_SIZE {
-            assert_eq!(super::div(LOG[i], EXP[i]), answers[i]);
+        for i in 0..GF2_8::LOG_SIZE {
+            assert_eq!(GF2_8::div(GF2_8::LOG[i], GF2_8::EXP[i]), answers[i]);
         }
     }
 
     #[test]
     fn pow() {
-        let answers: [u8; LOG_SIZE] = [
+        let answers: [u8; GF2_8::LOG_SIZE] = [
             1, 1, 1, 19, 76, 254, 223, 211, 239, 59, 172, 29, 226, 145, 112, 123, 
             73, 185, 89, 185, 89, 134, 15, 101, 106, 169, 182, 237, 62, 168, 64, 7, 
             28, 125, 64, 80, 243, 15, 169, 241, 80, 11, 137, 79, 220, 158, 196, 214, 
@@ -228,8 +432,8 @@ mod tests {
             147, 77, 91, 3, 172, 8, 168, 63, 38, 1, 26, 191, 219, 58, 20, 175, 
         ]; 
 
-        for i in 0..LOG_SIZE {
-            assert_eq!(super::pow(LOG[i], EXP[i] as i32), answers[i]);
+        for i in 0..GF2_8::LOG_SIZE {
+            assert_eq!(GF2_8::pow(GF2_8::LOG[i], GF2_8::EXP[i] as i32), answers[i]);
         }
     }
 }

@@ -1,3 +1,5 @@
+use core::ops::Deref;
+use core::marker::PhantomData;
 use ::gf::poly_math::*;
 use ::gf::poly::Polynom;
 use ::buffer::Buffer;
@@ -5,21 +7,23 @@ use ::gf;
 
 /// Reed-Solomon BCH encoder
 #[derive(Debug)]
-pub struct Encoder {
+pub struct Encoder<T: gf::GF2_X> {
     generator: Polynom,
+    phantom: PhantomData<T>,
 }
 
-impl Encoder {
+impl<T: gf::GF2_X> Encoder<T> {
     /// Constructs a new `Encoder` and calculates generator polynomial of given `ecc_len`.
     ///
     /// # Example
     /// ```rust
     /// use reed_solomon::Encoder;
+    /// use reed_solomon::GF2_8;
     ///
-    /// let encoder = Encoder::new(8);
+    /// let encoder = Encoder::<GF2_8>::new(8);
     /// ```
     pub fn new(ecc_len: usize) -> Self {
-        Encoder { generator: generator_poly(ecc_len) }
+        Encoder { generator: generator_poly::<T>(ecc_len), phantom: PhantomData }
     }
 
     /// Encodes passed `&[u8]` slice and returns `Buffer` with result and `ecc` offset.
@@ -27,9 +31,10 @@ impl Encoder {
     /// # Example
     /// ```rust
     /// use reed_solomon::Encoder;
-    ///
+    /// use reed_solomon::GF2_8;
+    /// 
     /// let data = "Hello World".as_bytes();
-    /// let encoder = Encoder::new(8);
+    /// let encoder = Encoder::<GF2_8>::new(8);
     ///
     /// let encoded = encoder.encode(&data);
     ///
@@ -46,15 +51,15 @@ impl Encoder {
         let gen = self.generator;
         let mut lgen = Polynom::with_length(self.generator.len());
         for (i, gen_i) in gen.iter().enumerate() {
-            uncheck_mut!(lgen[i]) = gf::LOG[*gen_i as usize];
+            uncheck_mut!(lgen[i]) = T::get_log(*gen_i as usize);
         } 
         
         for i in 0..data_len {
             let coef = uncheck!(data_out[i]);
             if coef != 0 {
-                let lcoef = gf::LOG[coef as usize] as usize;
+                let lcoef = T::get_log(coef as usize) as usize;
                 for j in 1..gen.len() {
-                    uncheck_mut!(data_out[i + j]) ^= gf::EXP[(lcoef + lgen[j] as usize)];
+                    uncheck_mut!(data_out[i + j]) ^= T::get_exp(lcoef + lgen[j] as usize);
                 }
             }
         }
@@ -64,12 +69,12 @@ impl Encoder {
     }
 }
 
-fn generator_poly(ecclen: usize) -> Polynom {
+fn generator_poly<T: gf::GF2_X>(ecclen: usize) -> Polynom {
     let mut gen = polynom![1];
     let mut mm = [1, 0];
     for i in 0..ecclen {
-        mm[1] = gf::pow(2, i as i32);
-        gen = gen.mul(&mm);
+        mm[1] = T::pow(2, i as i32);
+        gen = Mul::<T>::mul(gen.deref(), &mm);
     }
     gen
 }
@@ -77,6 +82,8 @@ fn generator_poly(ecclen: usize) -> Polynom {
 
 #[cfg(test)]
 mod tests {
+    use super::gf;
+
     #[test]
     fn generator_poly() {
         let answers =
@@ -94,7 +101,7 @@ mod tests {
 
         let mut ecclen = 2;
         for i in 0..6 {
-            assert_eq!(*answers[i], *super::generator_poly(ecclen));
+            assert_eq!(*answers[i], *super::generator_poly::<gf::GF2_8>(ecclen));
             ecclen *= 2;
         }
     }
@@ -105,7 +112,7 @@ mod tests {
                     22, 23, 24, 25, 26, 27, 28, 29];
         let ecc = [99, 26, 219, 193, 9, 94, 186, 143];
 
-        let encoder = super::Encoder::new(ecc.len());
+        let encoder = super::Encoder::<gf::GF2_8>::new(ecc.len());
         let encoded = encoder.encode(&data[..]);
 
         assert_eq!(data, encoded.data());

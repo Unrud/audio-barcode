@@ -8,6 +8,7 @@
 //!
 //! use reed_solomon::Encoder;
 //! use reed_solomon::Decoder;
+//! use reed_solomon::GF2_8;
 //!
 //! fn main() {
 //!     let data = b"Hello World!";
@@ -16,8 +17,8 @@
 //!     let ecc_len = 8;
 //!
 //!     // Create encoder and decoder with
-//!     let enc = Encoder::new(ecc_len);
-//!     let dec = Decoder::new(ecc_len);
+//!     let enc = Encoder::<GF2_8>::new(ecc_len);
+//!     let dec = Decoder::<GF2_8>::new(ecc_len);
 //!
 //!     // Encode data
 //!     let encoded = enc.encode(&data[..]);
@@ -162,7 +163,7 @@
 #![cfg_attr(feature = "dev", feature(plugin))]
 #![cfg_attr(feature = "dev", plugin(clippy))]
 #![warn(missing_docs, missing_debug_implementations,
-        trivial_casts, trivial_numeric_casts,
+        trivial_numeric_casts,
         unstable_features)]
 
 #![no_std]
@@ -180,3 +181,9 @@ pub use encoder::Encoder;
 pub use decoder::Decoder;
 pub use decoder::DecoderError;
 pub use buffer::Buffer;
+pub use gf::GF2_3;
+pub use gf::GF2_4;
+pub use gf::GF2_5;
+pub use gf::GF2_6;
+pub use gf::GF2_7;
+pub use gf::GF2_8;

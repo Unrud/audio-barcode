@@ -2,6 +2,7 @@ extern crate reed_solomon;
 
 use reed_solomon::Encoder;
 use reed_solomon::Decoder;
+use reed_solomon::GF2_8;
 
 fn main() {
     let data = b"Hello World!";
@@ -10,8 +11,8 @@ fn main() {
     let ecc_len = 8;
 
     // Create encoder and decoder with 
-    let enc = Encoder::new(ecc_len);
-    let dec = Decoder::new(ecc_len);
+    let enc = Encoder::<GF2_8>::new(ecc_len);
+    let dec = Decoder::<GF2_8>::new(ecc_len);
 
     // Encode data
     let encoded = enc.encode(&data[..]);

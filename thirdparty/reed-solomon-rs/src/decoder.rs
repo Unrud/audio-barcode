@@ -1,4 +1,6 @@
 use core;
+use core::ops::Deref;
+use core::marker::PhantomData;
 use ::gf::poly_math::*;
 use ::gf::poly::Polynom;
 use ::buffer::Buffer;
@@ -15,21 +17,23 @@ type Result<T> = core::result::Result<T, DecoderError>;
 
 /// Reed-Solomon BCH decoder
 #[derive(Debug, Copy, Clone)]
-pub struct Decoder {
+pub struct Decoder<T: gf::GF2_X> {
     ecc_len: usize,
+    phantom: PhantomData<T>,
 }
 
-impl Decoder {
+impl<T: gf::GF2_X> Decoder<T> {
     /// Constructs a new `Decoder`.
     ///
     /// # Example
     /// ```rust
     /// use reed_solomon::Decoder;
+    /// use reed_solomon::GF2_8;
     ///
-    /// let decoder = Decoder::new(8);
+    /// let decoder = Decoder::<GF2_8>::new(8);
     /// ```
     pub fn new(ecc_len: usize) -> Self {
-        Decoder { ecc_len: ecc_len }
+        Decoder { ecc_len: ecc_len, phantom: PhantomData }
     }
 
     /// Decodes block-encoded message and returns `Buffer` with corrected message and ecc offset.
@@ -39,10 +43,11 @@ impl Decoder {
     /// ```rust
     /// use reed_solomon::Encoder;
     /// use reed_solomon::Decoder;
+    /// use reed_solomon::GF2_8;
     ///
     /// // Create encoder and decoder
-    /// let encoder = Encoder::new(4);
-    /// let decoder = Decoder::new(4);
+    /// let encoder = Encoder::<GF2_8>::new(4);
+    /// let decoder = Decoder::<GF2_8>::new(4);
     ///
     /// // Encode message
     /// let mut encoded = encoder.encode(&[1, 2, 3, 4]);
@@ -113,10 +118,11 @@ impl Decoder {
     /// ```rust
     /// use reed_solomon::Encoder;
     /// use reed_solomon::Decoder;
+    /// use reed_solomon::GF2_8;
     ///
     /// // Create encoder and decoder
-    /// let encoder = Encoder::new(4);
-    /// let decoder = Decoder::new(4);
+    /// let encoder = Encoder::<GF2_8>::new(4);
+    /// let decoder = Decoder::<GF2_8>::new(4);
     ///
     /// // Encode message
     /// let mut encoded = encoder.encode(&[1, 2, 3, 4]);
@@ -147,10 +153,11 @@ impl Decoder {
     /// ```rust
     /// use reed_solomon::Encoder;
     /// use reed_solomon::Decoder;
+    /// use reed_solomon::GF2_8;
     ///
     /// // Create encoder and decoder
-    /// let encoder = Encoder::new(4);
-    /// let decoder = Decoder::new(4);
+    /// let encoder = Encoder::<GF2_8>::new(4);
+    /// let decoder = Decoder::<GF2_8>::new(4);
     ///
     /// // Encode message
     /// let mut encoded = encoder.encode(&[1, 2, 3, 4]);
@@ -164,27 +171,27 @@ impl Decoder {
     /// assert_eq!(decoder.is_corrupted(&encoded), true);
     /// ```
     pub fn is_corrupted(&self, msg: &[u8]) -> bool {
-        (0..self.ecc_len).any(|x| msg.eval(gf::pow(2, x as i32)) != 0)
+        (0..self.ecc_len).any(|x| Eval::<T>::eval(msg, T::pow(2, x as i32)) != 0)
     }
 
     fn calc_syndromes(&self, msg: &[u8]) -> Polynom {
         // index 0 is a pad for mathematical precision
         let mut synd = Polynom::with_length(self.ecc_len + 1);
         for i in 0..self.ecc_len {
-            uncheck_mut!(synd[i + 1]) = msg.eval(gf::pow(2, i as i32))
+            uncheck_mut!(synd[i + 1]) = Eval::<T>::eval(msg, T::pow(2, i as i32))
         }
 
         synd
     }
 
     fn find_errata_locator(&self, e_pos: &[u8]) -> Polynom {
-        let mut e_loc = polynom![1];
+        let mut e_loc: gf::poly::Polynom = polynom![1];
 
-        let add_lhs = [1];
-        let mut add_rhs = [0, 0];
+        let add_lhs = [1u8];
+        let mut add_rhs = [0u8, 0];
         for i in e_pos.iter() {
-            add_rhs[0] = gf::pow(2, *i as i32);
-            e_loc = e_loc.mul(&add_lhs.add(&add_rhs));
+            add_rhs[0] = T::pow(2, *i as i32);
+            e_loc = Mul::<T>::mul(e_loc.deref(), Add::<T>::add(&add_lhs as &[_], &add_rhs).deref());
         }
 
         e_loc
@@ -194,7 +201,7 @@ impl Decoder {
         let mut divisor = Polynom::with_length(syms + 2);
         divisor[0] = 1;
 
-        let (_, remainder) = (synd.mul(err_loc)).div(&divisor);
+        let (_, remainder) = Div::<T>::div(Mul::<T>::mul(synd, err_loc).deref(), &divisor);
         remainder
     }
 
@@ -216,7 +223,7 @@ impl Decoder {
 
         for px in coef_pos.iter() {
             let l = (255 - px) as i32;
-            X.push(gf::pow(2, -l))
+            X.push(T::pow(2, -l))
         }
 
         let mut E = Polynom::with_length(msg.len());
@@ -224,31 +231,31 @@ impl Decoder {
 
         let err_eval_rev = err_eval.reverse();
         for (i, Xi) in X.iter().enumerate() {
-            let Xi_inv = gf::inverse(*Xi);
+            let Xi_inv = T::inverse(*Xi);
 
             let mut err_loc_prime_tmp = Polynom::new();
             for (j, Xj) in X.iter().enumerate() {
                 if j != i {
-                    err_loc_prime_tmp.push(gf::sub(1, gf::mul(Xi_inv, *Xj)));
+                    err_loc_prime_tmp.push(T::sub(1, T::mul(Xi_inv, *Xj)));
                 }
             }
 
             let mut err_loc_prime = 1;
             for coef in err_loc_prime_tmp.iter() {
-                err_loc_prime = gf::mul(err_loc_prime, *coef);
+                err_loc_prime = T::mul(err_loc_prime, *coef);
             }
 
-            let y = err_eval_rev.eval(Xi_inv);
-            let y = gf::mul(gf::pow(*Xi, 1), y);
+            let y = Eval::<T>::eval(err_eval_rev.deref(), Xi_inv);
+            let y = T::mul(T::pow(*Xi, 1), y);
 
-            let magnitude = gf::div(y, err_loc_prime);
+            let magnitude = T::div(y, err_loc_prime);
 
             let E_index = uncheck!(err_pos[i]) as usize;
             uncheck_mut!(E[E_index]) = magnitude;
             fixed += 1;
         }
 
-        (msg.add(&E), fixed)
+        (Add::<T>::add(msg, &E), fixed)
     }
 
     #[allow(non_snake_case)]
@@ -279,19 +286,19 @@ impl Decoder {
             let mut delta = uncheck!(synd[K]);
             for j in 1..err_loc.len() {
                 let d_index = err_loc.len() - j - 1;
-                delta ^= gf::mul(err_loc[d_index], uncheck!(synd[K - j]));
+                delta ^= T::mul(err_loc[d_index], uncheck!(synd[K - j]));
             }
 
             old_loc.push(0);
 
             if delta != 0 {
                 if old_loc.len() > err_loc.len() {
-                    let new_loc = old_loc.scale(delta);
-                    old_loc = err_loc.scale(gf::inverse(delta));
+                    let new_loc = Scale::<T>::scale(old_loc.deref(), delta);
+                    old_loc = Scale::<T>::scale(err_loc.deref(), T::inverse(delta));
                     err_loc = new_loc;
                 }
 
-                err_loc = err_loc.add(&old_loc.scale(delta));
+                err_loc = Add::<T>::add(err_loc.deref(), Scale::<T>::scale(&old_loc as &[_], delta).deref());
             }
         }
 
@@ -317,7 +324,7 @@ impl Decoder {
         let mut err_pos = polynom![];
 
         for i in 0..msg_len {
-            if err_loc.eval(gf::pow(2, i as i32)) == 0 {
+            if Eval::<T>::eval(err_loc, T::pow(2, i as i32)) == 0 {
                 let x = msg_len as u8 - 1 - i as u8;
                 err_pos.push(x);
             }
@@ -339,9 +346,9 @@ impl Decoder {
         let mut fsynd = Polynom::from(&synd[1..]);
 
         for pos in erase_pos_rev.iter() {
-            let x = gf::pow(2, *pos as i32);
+            let x = T::pow(2, *pos as i32);
             for j in 0..(fsynd.len() - 1) {
-                fsynd[j] = gf::mul(fsynd[j], x) ^ fsynd[j + 1];
+                fsynd[j] = T::mul(fsynd[j], x) ^ fsynd[j + 1];
             }
         }
 
@@ -357,33 +364,33 @@ mod tests {
     #[test]
     fn calc_syndromes() {
         let px = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-        let mut encoded = Encoder::new(8).encode(&px[..]);
+        let mut encoded = Encoder::<gf::GF2_8>::new(8).encode(&px[..]);
 
-        assert_eq!([0; 9], *Decoder::new(8).calc_syndromes(&encoded));
+        assert_eq!([0; 9], *Decoder::<gf::GF2_8>::new(8).calc_syndromes(&encoded));
 
         encoded[5] = 1;
 
         assert_eq!([0, 7, 162, 172, 245, 176, 71, 58, 180],
-                   *Decoder::new(8).calc_syndromes(&encoded));
+                   *Decoder::<gf::GF2_8>::new(8).calc_syndromes(&encoded));
     }
 
     #[test]
     fn is_corrupted() {
         let px = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-        let mut encoded = Encoder::new(8).encode(&px[..]);
+        let mut encoded = Encoder::<gf::GF2_8>::new(8).encode(&px[..]);
 
-        assert_eq!(false, Decoder::new(8).is_corrupted(&encoded));
+        assert_eq!(false, Decoder::<gf::GF2_8>::new(8).is_corrupted(&encoded));
 
         encoded[5] = 1;
 
-        assert_eq!(true, Decoder::new(8).is_corrupted(&encoded));
+        assert_eq!(true, Decoder::<gf::GF2_8>::new(8).is_corrupted(&encoded));
     }
 
     #[test]
     fn find_errata_locator() {
         let e_pos = [19, 18, 17, 14, 15, 16];
         assert_eq!([134, 207, 111, 227, 24, 150, 1],
-                   *Decoder::new(6).find_errata_locator(&e_pos[..]));
+                   *Decoder::<gf::GF2_8>::new(6).find_errata_locator(&e_pos[..]));
     }
 
     #[test]
@@ -392,7 +399,7 @@ mod tests {
         let err_loc = [134, 207, 111, 227, 24, 150, 1];
 
         assert_eq!([148, 151, 175, 126, 68, 64, 0],
-                   *Decoder::new(6).find_error_evaluator(&synd, &err_loc, 6));
+                   *Decoder::<gf::GF2_8>::new(6).find_error_evaluator(&synd, &err_loc, 6));
     }
 
     #[test]
@@ -404,13 +411,13 @@ mod tests {
                       31, 179, 149, 163];
 
         assert_eq!(result,
-                   *Decoder::new(err_pos.len()).correct_errata(&msg, &synd, &err_pos).0);
+                   *Decoder::<gf::GF2_8>::new(err_pos.len()).correct_errata(&msg, &synd, &err_pos).0);
     }
 
     #[test]
     fn error_count() {
         let msg = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-        let encoder = Encoder::new(10);
+        let encoder = Encoder::<gf::GF2_8>::new(10);
 
         let encoded = encoder.encode(&msg[..]);
         let mut errd = *encoded;
@@ -418,7 +425,7 @@ mod tests {
         errd[0] = 255;
         errd[3] = 255;
 
-        let (_correct,err) = Decoder::new(10).correct_err_count(&errd, None).unwrap();
+        let (_correct,err) = Decoder::<gf::GF2_8>::new(10).correct_err_count(&errd, None).unwrap();
 
         assert_eq!(err, 2);
     }
@@ -432,7 +439,7 @@ mod tests {
 
         let result = [193, 144, 121, 1];
 
-        let error_loc = Decoder::new(nsym).find_error_locator(&synd, erase_loc, erase_count);
+        let error_loc = Decoder::<gf::GF2_8>::new(nsym).find_error_locator(&synd, erase_loc, erase_count);
 
         assert!(error_loc.is_ok());
         assert_eq!(result, *error_loc.unwrap());
@@ -444,7 +451,7 @@ mod tests {
         let msg_len = 20;
         let result = [5, 4, 3];
 
-        let err_pos = Decoder::new(6).find_errors(&err_loc, msg_len);
+        let err_pos = Decoder::<gf::GF2_8>::new(6).find_errors(&err_loc, msg_len);
 
         assert!(err_pos.is_ok());
         assert_eq!(result, *err_pos.unwrap());
@@ -452,7 +459,7 @@ mod tests {
         let err_loc = [1, 134, 181];
         let msg_len = 12;
 
-        let err_pos = Decoder::new(6).find_errors(&err_loc, msg_len);
+        let err_pos = Decoder::<gf::GF2_8>::new(6).find_errors(&err_loc, msg_len);
 
         assert!(err_pos.is_err());
     }
@@ -465,7 +472,7 @@ mod tests {
 
         let result = [79, 25, 0, 160, 198, 122, 192, 169, 232];
         assert_eq!(result,
-                   *Decoder::new(6).forney_syndromes(&synd, &pos, nmess));
+                   *Decoder::<gf::GF2_8>::new(6).forney_syndromes(&synd, &pos, nmess));
     }
 
     #[test]
@@ -477,7 +484,7 @@ mod tests {
         let result = [104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 145, 124, 96, 105, 94,
                       31, 179, 149, 163];
 
-        let decoder = Decoder::new(ecc);
+        let decoder = Decoder::<gf::GF2_8>::new(ecc);
         let decoded = decoder.correct(&mut msg[..], Some(&erase_pos)).unwrap();
 
         assert_eq!(result, **decoded);

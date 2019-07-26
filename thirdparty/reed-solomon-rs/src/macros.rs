@@ -11,7 +11,7 @@ macro_rules! polynom {
 }
 
 macro_rules! uncheck {
-    ($array:ident[$index:expr]) => {
+    ($array:path[$index:expr]) => {
         if cfg!(feature = "unsafe_indexing") {
             unsafe {
                 *$array.get_unchecked($index)
@@ -23,7 +23,7 @@ macro_rules! uncheck {
 }
 
 macro_rules! uncheck_mut {
-    ($array:ident[$index:expr]) => {
+    ($array:path[$index:expr]) => {
         * if cfg!(feature = "unsafe_indexing") {
             unsafe {
                 $array.get_unchecked_mut($index)
