@@ -1,0 +1,8 @@
+[package]
+name = "goertzel"
+version = "0.2.0"
+authors = ["Matt McPherrin <matt@mcpherrin.ca>"]
+repository = "https://github.com/mcpherrinm/goertzel.git"
+keywords = ["dsp", "goertzel", "fft", "fourier"]
+license = "MIT"
+description = "An implementation of Goertzel's Algoritm"
