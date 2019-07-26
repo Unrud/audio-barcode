@@ -1,7 +1,12 @@
 [package]
 name = "audio-barcode"
+description = "Send and receive small data packets over sound"
 version = "0.1.0"
 authors = ["Unrud <unrud@outlook.com>"]
 edition = "2018"
+license = "MIT"
+repository = "https://github.com/unrud/audio-barcode"
 
 [dependencies]
+reed-solomon = { path = "./thirdparty/reed-solomon-rs" }
+goertzel = { path = "./thirdparty/goertzel" }
