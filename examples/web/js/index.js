@@ -3,6 +3,8 @@ import * as wasm from "../pkg/index.js";
 wasm.init();
 
 const OUTPUT_GAIN = 0.5;
+const PERF_MEASUREMENT_DURATION = 2000;
+const PERF_MIN = 0.98;
 const BEEP_LEN = wasm.Transceiver.get_beep_len();
 const ATTACK_LEN = wasm.Transceiver.get_attack_len();
 const RELEASE_LEN = wasm.Transceiver.get_release_len();
@@ -15,6 +17,14 @@ function log(msg, class_) {
     e.classList.add(class_);
     e.textContent = msg;
     log_container.prepend(e);
+}
+
+function log_message(payload, class_) {
+    let msg = "";
+    for (let i = 0; i < payload.length; i++) {
+        msg += SYMBOL_MNEMONICS.charAt(payload[i]);
+    }
+    log(msg, class_);
 }
 
 let audioCtx = new AudioContext();
@@ -63,6 +73,13 @@ if (navigator.mediaDevices) {
         scriptNode.connect(audioCtx.destination);
         // Resume AudioContext after user interaction
         audioCtx.resume().catch(on_gum_err);
+        let perf_container = document.createElement("div");
+        perf_container.textContent = "Performance: ";
+        let perf_display = document.createTextNode("...");
+        perf_container.append(perf_display);
+        log_container.prepend(perf_container);
+        let perf_start = performance.now();  // timestamp is low-resolution!
+        let perf_sample_count = 0;
         scriptNode.onaudioprocess = function(audioProcessingEvent) {
             let inputBuffer = audioProcessingEvent.inputBuffer;
             let inputData = inputBuffer.getChannelData(0);
@@ -70,18 +87,23 @@ if (navigator.mediaDevices) {
                 skip_recording_samples -= 1;
                 transceiver.push_sample(skip_recording_samples < 0 ? inputData[i] : 0);
             }
+            perf_sample_count += inputBuffer.length;
+            let perf_diff = performance.now() - perf_start;
+            if (perf_diff >= PERF_MEASUREMENT_DURATION) {
+                let perf = perf_sample_count / (inputBuffer.sampleRate * perf_diff / 1000);
+                perf_start += perf_diff;
+                perf_sample_count = 0;
+                perf_display.textContent = Math.round(perf * 100) + "%";
+                if (perf < PERF_MIN) {
+                    perf_container.classList.add("err");
+                } else {
+                    perf_container.classList.remove("err");
+                }
+            }
         }
     }).catch(on_gum_err);
 } else {
     on_gum_err("Not supported on your browser!");
-}
-
-function log_message(payload, class_) {
-    let msg = "";
-    for (let i = 0; i < payload.length; i++) {
-        msg += SYMBOL_MNEMONICS.charAt(payload[i]);
-    }
-    log(msg, class_);
 }
 
 let message_input = document.querySelector("#message");
