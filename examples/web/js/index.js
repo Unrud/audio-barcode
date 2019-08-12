@@ -11,7 +11,11 @@ const RELEASE_LEN = wasm.Transceiver.get_release_len();
 const PAYLOAD_LEN = wasm.Transceiver.get_payload_len();
 const SYMBOL_MNEMONICS = wasm.Transceiver.get_symbol_mnemonics();
 
+let message_form = document.querySelector("form");
+let message_input = message_form.querySelector("#message");
+let message_submit = message_form.querySelector("button[type=submit]");
 let log_container = document.querySelector("#log");
+
 function log(msg, class_) {
     let e = document.createElement("div");
     e.classList.add(class_);
@@ -52,6 +56,11 @@ function on_transmit(frequencies) {
     }
     oscillator.start(now);
     oscillator.stop(now + (BEEP_LEN * frequencies.length));
+    // Disable UI while transmitting
+    message_submit.setAttribute("disabled", "");
+    oscillator.onended = function() {
+        message_submit.removeAttribute("disabled");
+    }
     // Mute recording while transmitting
     skip_recording_samples = BEEP_LEN * frequencies.length * audioCtx.sampleRate;
 }
@@ -106,8 +115,8 @@ if (navigator.mediaDevices) {
     on_gum_err("Not supported on your browser!");
 }
 
-let message_input = document.querySelector("#message");
-document.querySelector("form").onsubmit = function() {
+message_form.addEventListener("submit", function(event) {
+    event.preventDefault();
     let message = message_input.value;
     let payload = new Uint8Array(PAYLOAD_LEN);
     for (let i = 0, j = 0; i < message.length && j < payload.length; i++) {
@@ -119,8 +128,7 @@ document.querySelector("form").onsubmit = function() {
     }
     transceiver.send(payload);
     log_message(payload, "tx");
-    return false;
-};
+});
 
 message_input.setAttribute("maxlength", PAYLOAD_LEN);
 function validate_message_input() {
