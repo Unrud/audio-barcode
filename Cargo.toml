@@ -11,3 +11,11 @@ repository = "https://github.com/unrud/audio-barcode"
 [dependencies]
 reed-solomon = { path = "./thirdparty/reed-solomon-rs" }
 goertzel = { path = "./thirdparty/goertzel" }
+
+[dev-dependencies]
+hound = "3.4.0"
+bencher = "0.1.5"
+
+[[bench]]
+name = "receiver"
+harness = false

@@ -198,3 +198,66 @@ impl Transceiver {
         self.frames.clear();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+
+    #[test]
+    fn test_receiver() {
+        let mut wav_reader = hound::WavReader::open("testsamples/test.wav").unwrap();
+        let mut expected_payload = [0u8; PAYLOAD_LEN];
+        for (i, mnemonic) in "test".chars().enumerate() {
+            expected_payload[i] = SYMBOL_MNEMONICS.find(mnemonic).unwrap() as u8;
+        }
+        let expected_payload = expected_payload;
+        let received_payload = Arc::new(Mutex::new([0u8; PAYLOAD_LEN]));
+        let received_count = Arc::new(Mutex::new(0));
+        let on_received = {
+            let received_payload = received_payload.clone();
+            let received_count = received_count.clone();
+            move |payload| {
+                *received_payload.lock().unwrap() = payload;
+                *received_count.lock().unwrap() += 1;
+            }
+        };
+        let mut transceiver = Transceiver::new(
+            wav_reader.spec().sample_rate,
+            Box::new(on_received),
+            Box::new(|_| panic!("should not be called")));
+        for sample in wav_reader.samples::<f32>() {
+            transceiver.push_sample(sample.unwrap());
+        }
+        assert_eq!(*received_count.lock().unwrap(), 1);
+        assert_eq!(*received_payload.lock().unwrap(), expected_payload);
+    }
+
+    #[test]
+    fn test_transmitter() {
+        let mut payload = [0u8; PAYLOAD_LEN];
+        for (i, mnemonic) in "test".chars().enumerate() {
+            payload[i] = SYMBOL_MNEMONICS.find(mnemonic).unwrap() as u8;
+        }
+        let payload = payload;
+        let transmit_frequencies = Arc::new(Mutex::new([0f32; FRAME_LEN]));
+        let transmit_count = Arc::new(Mutex::new(0));
+        let on_transmit = {
+            let transmit_frequencies = transmit_frequencies.clone();
+            let transmit_count = transmit_count.clone();
+            move |frequencies| {
+                *transmit_frequencies.lock().unwrap() = frequencies;
+                *transmit_count.lock().unwrap() += 1;
+            }
+        };
+        let mut transceiver = Transceiver::new(
+            48000,
+            Box::new(|_| panic!("should not be called")),
+            Box::new(on_transmit));
+        transceiver.send(&payload);
+        assert_eq!(*transmit_count.lock().unwrap(), 1);
+        for &frequency in transmit_frequencies.lock().unwrap().iter() {
+            assert_ne!(frequency, 0.);
+        }
+    }
+}
