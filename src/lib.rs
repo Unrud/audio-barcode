@@ -19,26 +19,24 @@ pub const FRAME_LEN: usize = START_SYMBOLS_LEN + PAYLOAD_LEN + ECC_LEN;
 const MEASUREMENTS_PER_SYMBOL: usize = 10;
 pub const SYMBOL_MNEMONICS: &str = "0123456789abcdefghijklmnopqrstuv";
 
-#[derive(Clone)]
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 struct Symbol {
     value: u8,
     magnitude: f32,
     noise: f32,
 }
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 struct Frame {
-    start_measurement: u64,
+    active: bool,
     data: [Symbol; FRAME_LEN],
-    data_pos: usize
+    data_pos: usize,
 }
 
 pub struct Transceiver {
     sample_rate: u32,
     on_received: Box<FnMut([u8; PAYLOAD_LEN])>,
     on_transmit: Box<FnMut([f32; FRAME_LEN])>,
-    measurements_count: u64,
     sample_buffer: Vec<f32>,
     sample_buffer_pos: usize,
     remaining_samples: f32,
@@ -46,8 +44,12 @@ pub struct Transceiver {
     rs_decoder: reed_solomon::Decoder<GF>,
     rs_encoder: reed_solomon::Encoder<GF>,
     goertzel_filters: [goertzel::Parameters; SYMBOL_COUNT],
-    partial_frames: Vec<Frame>,
-    frames: Vec<Frame>,
+    frames: [Frame; MEASUREMENTS_PER_SYMBOL * FRAME_LEN],
+    frames_pos: usize,
+    active_frame: bool,
+    active_frame_payload: [u8; PAYLOAD_LEN],
+    active_frame_quality: (usize, f32),
+    active_frame_age: usize,
 }
 
 impl Transceiver {
@@ -72,7 +74,6 @@ impl Transceiver {
             sample_rate: sample_rate,
             on_received: on_received,
             on_transmit: on_transmit,
-            measurements_count: 0,
             remaining_samples: sample_buffer_len as f32,
             sample_buffer: sample_buffer,
             sample_buffer_pos: 0,
@@ -80,19 +81,23 @@ impl Transceiver {
             rs_decoder: reed_solomon::Decoder::new(ECC_LEN),
             rs_encoder: reed_solomon::Encoder::new(ECC_LEN),
             goertzel_filters: goertzel_filters,
-            partial_frames: vec![],
-            frames: vec![]
+            frames: [Default::default(); MEASUREMENTS_PER_SYMBOL * FRAME_LEN],
+            frames_pos: 0,
+            active_frame: false,
+            active_frame_payload: Default::default(),
+            active_frame_quality: Default::default(),
+            active_frame_age: Default::default(),
         }
     }
 
     pub fn send(&mut self, payload: &[u8; PAYLOAD_LEN]) {
-        let encoded_data = self.rs_encoder.encode(payload);
+        let mut data: [u8; START_SYMBOLS_LEN + PAYLOAD_LEN] = Default::default();
+        data[..START_SYMBOLS_LEN].copy_from_slice(&START_SYMBOLS);
+        data[START_SYMBOLS_LEN..].copy_from_slice(payload);
+        let encoded_data = self.rs_encoder.encode(&data);
         let mut frequencies: [f32; FRAME_LEN] = Default::default();
-        for (i, symbol) in START_SYMBOLS.iter().enumerate() {
-            frequencies[i] = Self::calc_freq(*symbol);
-        }
         for (i, symbol) in encoded_data.iter().enumerate() {
-            frequencies[i + START_SYMBOLS.len()] = Self::calc_freq(*symbol);
+            frequencies[i] = Self::calc_freq(*symbol);
         }
         (self.on_transmit)(frequencies);
     }
@@ -127,75 +132,64 @@ impl Transceiver {
                 best_symbol.noise = magnitude;
             }
         }
-        self.partial_frames.push(Frame {
-            start_measurement: self.measurements_count,
-            data: Default::default(),
-            data_pos: 0
-        });
-        for frame in self.partial_frames.iter_mut() {
-            if (self.measurements_count - frame.start_measurement) % (MEASUREMENTS_PER_SYMBOL as u64) == 0 {
-                frame.data[frame.data_pos] = best_symbol.clone();
+        let completed_frame = self.frames[self.frames_pos];
+        self.frames[self.frames_pos] = Default::default();
+        self.frames[self.frames_pos].active = true;
+        for i in 0..FRAME_LEN {
+            let frame = &mut self.frames[(self.frames_pos + i * MEASUREMENTS_PER_SYMBOL) % self.frames.len()];
+            if frame.active {
+                frame.data[frame.data_pos] = best_symbol;
                 frame.data_pos += 1;
             }
         }
-        let mut i = 0;
-        while i < self.partial_frames.len() {
-            let mut remove_frame = false;
-            {
-                let frame = &self.partial_frames[i];
-                if frame.data_pos == START_SYMBOLS_LEN {
-                    for (j, start_symbol) in START_SYMBOLS.iter().enumerate() {
-                        if frame.data[j].value != *start_symbol {
-                            remove_frame = true;
-                            break;
-                        }
-                    }
-                }
-                if frame.data_pos == FRAME_LEN {
-                    remove_frame = true;
-                }
-            }
-            if remove_frame {
-                let frame = self.partial_frames.remove(i);
-                if frame.data_pos == FRAME_LEN {
-                    self.frames.push(frame);
-                }
-                continue;
-            }
-            i += 1;
-        }
-        self.measurements_count += 1;
-        if self.frames.len() == 0 ||
-                self.frames[0].start_measurement +
-                (FRAME_LEN as u64) * (MEASUREMENTS_PER_SYMBOL as u64) > self.measurements_count {
-            return;
-        }
-        {
-            let mut best_frame_quality = 0.0;
-            let mut best_frame = &Default::default();
-            for frame in self.frames.iter() {
-                let mut frame_quality = 0f32;
-                for symbol in frame.data.iter() {
-                    frame_quality += symbol.magnitude / symbol.noise;
-                }
-                if best_frame_quality < frame_quality {
-                    best_frame = frame;
-                    best_frame_quality = frame_quality;
-                }
-            }
-            let mut raw_data: [u8; PAYLOAD_LEN + ECC_LEN] = Default::default();
-            for (i, symbol) in best_frame.data.iter().skip(START_SYMBOLS_LEN).enumerate() {
+        if completed_frame.active {
+            let mut raw_data: [u8; FRAME_LEN] = Default::default();
+            for (i, symbol) in completed_frame.data.iter().enumerate() {
                 raw_data[i] = symbol.value;
             }
             if let Ok(corrected_data) = self.rs_decoder.correct(&mut raw_data, None) {
-                let mut payload_data: [u8; PAYLOAD_LEN] = Default::default();
-                for (i, c) in (*corrected_data).iter().take(PAYLOAD_LEN).enumerate() {
-                    payload_data[i] = *c;
+                let corrected_data = *corrected_data;
+                let start_symbols_ok = corrected_data[..START_SYMBOLS_LEN] == START_SYMBOLS;
+                if start_symbols_ok {
+                    let mut payload: [u8; PAYLOAD_LEN] = Default::default();
+                    for (i, &c) in corrected_data.iter().skip(START_SYMBOLS_LEN).take(PAYLOAD_LEN).enumerate() {
+                        payload[i] = c;
+                    }
+                    let mut correct_symbols = 0;
+                    for (i, &c) in corrected_data.iter().enumerate() {
+                        if raw_data[i] == c {
+                            correct_symbols += 1;
+                        }
+                    }
+                    let mut signal_quality = 0.;
+                    for symbol in completed_frame.data.iter() {
+                        signal_quality += symbol.magnitude / symbol.noise;
+                    }
+                    let frame_quality = (correct_symbols, signal_quality);
+                    if !self.active_frame || self.active_frame_quality < frame_quality {
+                        self.active_frame_payload = payload;
+                        self.active_frame_quality = frame_quality;
+                        if !self.active_frame {
+                            self.active_frame = true;
+                            self.active_frame_age = 0;
+                            // Skip following frames
+                            for i in MEASUREMENTS_PER_SYMBOL..self.frames.len() {
+                                let frame_pos = (self.frames_pos + i) % self.frames.len();
+                                self.frames[frame_pos].active = false;
+                            }
+                        }
+                    }
                 }
-                (self.on_received)(payload_data);
             }
         }
-        self.frames.clear();
+        if self.active_frame {
+            self.active_frame_age += 1;
+            if self.active_frame_age == MEASUREMENTS_PER_SYMBOL {
+                self.active_frame = false;
+                (self.on_received)(self.active_frame_payload);
+            }
+        }
+        self.frames_pos = (self.frames_pos + 1) % self.frames.len();
     }
 }
 
