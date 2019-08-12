@@ -73,7 +73,8 @@ function on_gum_err(err) {
 }
 
 if (navigator.mediaDevices) {
-    navigator.mediaDevices.getUserMedia ({audio: true})
+    navigator.mediaDevices.getUserMedia({audio: {
+        echoCancellation: false, autoGainControl: false, noiseSuppression: false, channelCount: 1}})
     .then(function(stream) {
         let source = audioCtx.createMediaStreamSource(stream);
         let scriptNode = audioCtx.createScriptProcessor(0, 1, 1);
