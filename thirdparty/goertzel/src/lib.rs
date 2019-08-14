@@ -14,6 +14,7 @@ pub struct Parameters {
     term_coefficient: f32,
 }
 
+#[derive(Clone, Copy)]
 pub struct Partial {
     params: Parameters,
     count: usize,
@@ -34,43 +35,50 @@ impl Parameters {
         }
     }
 
+    #[inline]
     pub fn start(self) -> Partial {
         Partial{ params: self, count: 0, prev: 0., prevprev: 0. }
-    }
-
-    pub fn mag(self, samples: &[f32]) -> f32 {
-        self.start().add(samples).finish_mag()
     }
 }
 
 impl Partial {
-    pub fn add(mut self, samples: &[f32]) -> Self {
-        for &sample in samples {
-            let this = self.params.term_coefficient * self.prev - self.prevprev + sample;
-            self.prevprev = self.prev;
-            self.prev = this;
-        }
-        self.count += samples.len();
-        self
+    #[inline]
+    pub fn push(&mut self, sample: f32) {
+        let this = self.params.term_coefficient * self.prev - self.prevprev + sample;
+        self.prevprev = self.prev;
+        self.prev = this;
+        debug_assert_eq!(self.count += 1, ());
     }
+
+    #[inline]
     pub fn finish(self) -> (f32, f32) {
-        assert_eq!(self.count, self.params.window_size);
+        debug_assert_eq!(self.count, self.params.window_size);
         let real = self.prev - self.prevprev * self.params.cosine;
         let imag = self.prevprev * self.params.sine;
         (real, imag)
     }
 
+    #[inline]
     pub fn finish_mag(self) -> f32 {
         let (real, imag) = self.finish();
         (real*real + imag*imag).sqrt()
+    }
+
+    #[inline]
+    pub fn finish_fast(self) -> f32 {
+        debug_assert_eq!(self.count, self.params.window_size);
+        self.prev*self.prev + self.prevprev*self.prevprev - self.prev*self.prevprev*self.params.term_coefficient
     }
 }
 
 #[test]
 fn zero_data() {
     let p = Parameters::new(1800., 8000, 256);
-    assert!(p.start().add(&[0.; 256]).finish_mag() == 0.);
-    assert!(p.start().add(&[0.; 128]).add(&[0.; 128]).finish_mag() == 0.);
+    let mut pa = p.start();
+    for &sample in [0.; 256].iter() {
+        pa.push(sample);
+    }
+    assert_eq!(pa.finish_mag(), 0.);
 }
 
 #[test]
@@ -85,10 +93,18 @@ fn sine() {
         }
 
         let p = Parameters::new(freq, 8000, 8000);
-        let mag = p.start().add(&buf[..]).finish_mag();
+        let mut pa = p.start();
+        for &sample in buf.iter() {
+            pa.push(sample);
+        }
+        let mag = pa.finish_mag();
         for testfreq in (0 .. 30).map(|x| (x * 100) as f32) {
             let p = Parameters::new(testfreq, 8000, 8000);
-            let testmag = p.mag(&buf[..]);
+            let mut pa = p.start();
+            for &sample in buf.iter() {
+                pa.push(sample);
+            }
+            let testmag = pa.finish_mag();
             println!("{:4}: {:12.3}", testfreq, testmag);
             if (freq-testfreq).abs() > 100. {
                 println!("{} > 10*{}", mag, testmag);
