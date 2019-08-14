@@ -24,6 +24,7 @@ MIT (see ``LICENSE``)
       * License: MIT
       * Patches:
           * [Use f32 samples](https://github.com/Unrud/audio-barcode/commit/fc992136222b27124089fb086c71ecc474f268cc)
+          * [Optimizations](https://github.com/Unrud/audio-barcode/commit/9b32e1e5c68382dd1fc9b0dd3a3c1d8b8ff9f834#diff-c38bb9ffe1f8a2d30f10dbc1c909940d)
   * **reed-solomon-rs**
       * Repository: https://github.com/mersinvald/reed-solomon-rs
       * License: MIT
