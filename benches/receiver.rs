@@ -6,7 +6,7 @@ use bencher::Bencher;
 use audio_barcode::*;
 
 fn receiver(bench: &mut Bencher) {
-    let mut wav_reader = hound::WavReader::open("testsamples/test.wav").unwrap();
+    let mut wav_reader = hound::WavReader::open("testsamples/packet.wav").unwrap();
     let mut samples = vec![0f32; 0];
     for sample in wav_reader.samples::<f32>() {
         samples.push(sample.unwrap());
@@ -14,6 +14,7 @@ fn receiver(bench: &mut Bencher) {
     let samples = samples;
     let mut transceiver = Transceiver::new(
         wav_reader.spec().sample_rate,
+        Box::new(|_| ()),
         Box::new(|_| ()),
         Box::new(|_| ()));
     bench.iter(|| {

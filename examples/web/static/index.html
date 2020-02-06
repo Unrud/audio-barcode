@@ -1,12 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="message">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width initial-scale=1, user-scalable=0">
 <link rel="stylesheet" href="styles.css">
-<title>Audio Barcode</title>
 <script src="bootstrap.js"></script>
-<form>
-  <input type="text" value="" id="message" placeholder="Message">
-  <button type="submit">Send</button>
+<title>Audio Barcode</title>
+
+<header>
+    <h1>Audio Barcode</h1>
+    <nav>
+        <a id="message-btn" href="#">Message</a>
+        <a id="packet-btn" href="#">Packet</a>
+    </nav>
+</header>
+
+<form id="message-form">
+    <input type="text" placeholder="Type A Message">
+    <button type="submit">Send</button>
 </form>
-<p id="log"></p>
+<form id="packet-form">
+    <input type="text" placeholder="Enter Symbols">
+    <button type="submit">Send</button>
+</form>
+<section id="log"></section>
