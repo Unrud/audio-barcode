@@ -40,8 +40,8 @@ struct Frame {
 
 pub struct Transceiver {
     sample_rate: u32,
-    on_received: Box<FnMut([u8; PAYLOAD_LEN])>,
-    on_transmit: Box<FnMut([f32; FRAME_LEN])>,
+    on_received: Box<dyn FnMut([u8; PAYLOAD_LEN])>,
+    on_transmit: Box<dyn FnMut([f32; FRAME_LEN])>,
     sample_buffer: Vec<f32>,
     sample_buffer_pos: usize,
     remaining_samples: f32,
@@ -63,7 +63,7 @@ impl Transceiver {
         BASE_FREQ * SEMITONE.powi(symbol as i32)
     }
 
-    pub fn new(sample_rate: u32, on_received: Box<FnMut([u8; PAYLOAD_LEN])>, on_transmit: Box<FnMut([f32; FRAME_LEN])>) -> Self {
+    pub fn new(sample_rate: u32, on_received: Box<dyn FnMut([u8; PAYLOAD_LEN])>, on_transmit: Box<dyn FnMut([f32; FRAME_LEN])>) -> Self {
         let sample_buffer_len = (sample_rate as f32) * BEEP_LEN;
         let sample_buffer = vec![0.; sample_buffer_len.round() as usize];
         let mut window_weights = vec![0f32; sample_buffer.len()];
@@ -72,7 +72,7 @@ impl Transceiver {
             window_weights[i] = 0.54 - 0.46 * (2.0 * PI * (i as f32) / (window_weights.len() as f32 - 1.0)).cos();
         }
         let window_weights = window_weights;
-        let mut goertzel_filters: [goertzel::Parameters; SYMBOL_COUNT] = unsafe {std::mem::uninitialized()};
+        let mut goertzel_filters: [goertzel::Parameters; SYMBOL_COUNT] = unsafe {std::mem::MaybeUninit::uninit().assume_init()};
         for i in 0..goertzel_filters.len() {
             goertzel_filters[i] = goertzel::Parameters::new(Self::calc_freq(i as u8), sample_rate, sample_buffer.len());
         }
@@ -120,7 +120,7 @@ impl Transceiver {
         self.remaining_samples += (self.sample_rate as f32) * BEEP_LEN / (MEASUREMENTS_PER_SYMBOL as f32);
 
         // Decode symbol
-        let mut goertzel_partials: [goertzel::Partial; SYMBOL_COUNT] = unsafe {std::mem::uninitialized()};
+        let mut goertzel_partials: [goertzel::Partial; SYMBOL_COUNT] = unsafe {std::mem::MaybeUninit::uninit().assume_init()};
         for (i, goertzel_filter) in self.goertzel_filters.iter().enumerate() {
             goertzel_partials[i] = goertzel_filter.start();
         }

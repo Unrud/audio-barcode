@@ -6,15 +6,10 @@ pub mod poly_math;
 
 #[allow(non_camel_case_types)]
 pub trait GF2_X {
-    #[inline]
     fn get_field_charac() -> usize;
-    #[inline]
     fn get_exp_size() -> usize;
-    #[inline]
     fn get_exp(i: usize) -> u8;
-    #[inline]
     fn get_log_size() -> usize;
-    #[inline]
     fn get_log(i: usize) -> u8;
 
     #[inline]
