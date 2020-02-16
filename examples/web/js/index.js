@@ -56,7 +56,7 @@ function log_message(text, direction) {
     log(text, ["message", direction]);
 }
 
-let audioCtx = new AudioContext();
+let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 function on_received(payload) {
     log_packet(payload, "rx");
