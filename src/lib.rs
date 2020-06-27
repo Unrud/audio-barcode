@@ -237,7 +237,7 @@ impl Transceiver {
         let mut next_symbol = 0u8;
         let mut next_symbol_magnitude = 0.;
         let mut next_symbol_noise = 0.;
-        for (i, &goertzel_partial) in goertzel_partials.into_iter().enumerate() {
+        for (i, &goertzel_partial) in goertzel_partials.iter().enumerate() {
             let magnitude = goertzel_partial.finish_fast();
             if magnitude > next_symbol_magnitude {
                 next_symbol = i as u8;
