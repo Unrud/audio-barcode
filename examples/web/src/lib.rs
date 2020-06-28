@@ -19,9 +19,9 @@ macro_rules! log {
 
 #[wasm_bindgen]
 pub fn init() {
-    // This provides better error messages in debug mode.
-    // It's disabled in release mode so it doesn't bloat up the file size.
-    #[cfg(debug_assertions)]
+    // This provides better error messages, when the `console_error_panic_hook`
+    // feature is enabled. Unfortunately it bloats up the file size.
+    #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 }
 
