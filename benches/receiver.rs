@@ -3,20 +3,24 @@ extern crate bencher;
 
 use bencher::Bencher;
 
+use audio_barcode::test_utils::*;
 use audio_barcode::*;
 
 fn receiver(bench: &mut Bencher) {
-    let mut wav_reader = hound::WavReader::open("testsamples/packet.wav").unwrap();
-    let mut samples = vec![0f32; 0];
-    for sample in wav_reader.samples::<f32>() {
-        samples.push(sample.unwrap());
-    }
-    let samples = samples;
-    let mut transceiver = Transceiver::new(
-        wav_reader.spec().sample_rate,
-        Box::new(|_| ()),
-        Box::new(|_| ()),
-        Box::new(|_| ()));
+    const SAMPLE_RATE: u32 = 44100;
+    let mut transceiver = Transceiver::new(SAMPLE_RATE);
+    let samples = {
+        let payload = rand_payload(0);
+        let mut samples = Vec::new();
+        // prepend 0.5 seconds of silence
+        samples.extend(vec![0.; (SAMPLE_RATE / 2) as usize]);
+        for &frequency in transceiver.send(&payload).iter() {
+            samples.extend(transceiver.generate_beep(frequency).iter());
+        }
+        // append 0.5 seconds of silence
+        samples.extend(vec![0.; (SAMPLE_RATE / 2) as usize]);
+        samples
+    };
     bench.iter(|| {
         for &sample in samples.iter() {
             transceiver.push_sample(sample);

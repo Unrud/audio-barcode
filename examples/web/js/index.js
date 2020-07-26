@@ -5,13 +5,12 @@ wasm.init();
 const OUTPUT_GAIN = 0.5;
 const PERF_MEASUREMENT_DURATION = 2000;
 const PERF_MIN = 0.98;
-const BEEP_TIME = wasm.Transceiver.get_beep_time();
-const ATTACK_TIME = wasm.Transceiver.get_attack_time();
-const RELEASE_TIME = wasm.Transceiver.get_release_time();
-const TIME_BETWEEN_PACKETS = wasm.Transceiver.get_time_between_packets();
-const PAYLOAD_LEN = wasm.Transceiver.get_payload_len();
-const SYMBOL_MNEMONICS = wasm.Transceiver.get_symbol_mnemonics();
-const MAX_MESSAGE_LEN = wasm.Transceiver.get_max_message_len();
+const BEEP_TIME = wasm.MessageTransceiver.get_beep_time();
+const ATTACK_TIME = wasm.MessageTransceiver.get_attack_time();
+const RELEASE_TIME = wasm.MessageTransceiver.get_release_time();
+const PAYLOAD_LEN = wasm.MessageTransceiver.get_payload_len();
+const SYMBOL_MNEMONICS = wasm.MessageTransceiver.get_symbol_mnemonics();
+const MAX_MESSAGE_LEN = wasm.MessageTransceiver.get_max_message_len();
 
 let message_btn = document.querySelector("#message-btn");
 let message_form = document.querySelector("#message-form");
@@ -70,7 +69,10 @@ function on_received_message(text) {
 let pending_transmissions = [];
 let transmission_in_progress = false;
 
-function on_transmit(frequencies) {
+function on_transmit(payload, frequencies) {
+    if (payload) {
+        log_packet(payload, "tx");
+    }
     if (frequencies) {
         pending_transmissions.push(frequencies);
     }
@@ -103,14 +105,14 @@ function on_transmit(frequencies) {
         oscillator.frequency.setValueAtTime(frequencies[i], beep_start);
     }
     oscillator.start(now);
-    oscillator.stop(now + BEEP_TIME * frequencies.length + TIME_BETWEEN_PACKETS);
+    oscillator.stop(now + BEEP_TIME * frequencies.length);
     oscillator.onended = function() {
         transmission_in_progress = false;
         on_transmit();
     }
 }
 
-let transceiver = wasm.Transceiver.new(audioCtx.sampleRate, on_received, on_received_message, on_transmit);
+let transceiver = wasm.MessageTransceiver.new(audioCtx.sampleRate, on_received, on_received_message, on_transmit);
 
 function on_gum_err(err) {
     console.log("The following gUM error occured: " + err);
@@ -193,7 +195,6 @@ packet_form.addEventListener("submit", function(event) {
         }
     }
     transceiver.send(payload);
-    log_packet(payload, "tx");
 });
 
 packet_input.setAttribute("maxlength", PAYLOAD_LEN);

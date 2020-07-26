@@ -1,7 +1,7 @@
 {
   "author": "Unrud <unrud@outlook.com>",
   "name": "audio-barcode-web",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "build": "rimraf dist pkg && webpack",

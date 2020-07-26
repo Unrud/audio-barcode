@@ -1,19 +1,23 @@
 [package]
 name = "audio-barcode"
 description = "Send and receive small data packets over sound"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Unrud <unrud@outlook.com>"]
 readme = "README.md"
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/unrud/audio-barcode"
 
+[features]
+test-utils = ["rand"]
+
 [dependencies]
 reed-solomon = { path = "./thirdparty/reed-solomon-rs" }
 goertzel = { path = "./thirdparty/goertzel" }
+rand = { version = "0.7", features = ["small_rng"], optional = true }
 
 [dev-dependencies]
-hound = "3.4.0"
+audio-barcode = { path = ".", features = ["test-utils"] }
 bencher = "0.1.5"
 
 [[bench]]
