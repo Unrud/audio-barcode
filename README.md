@@ -8,6 +8,41 @@ Based on the protocol described in
 It's **not** compatible with the Chirp protocol. The parameters for
 error correction are not published in the article.
 
+## Usage
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+audio-barcode = { git = "https://github.com/Unrud/audio-barcode" }
+```
+
+Then you can do something like:
+
+```rust
+use audio_barcode::Transceiver;
+
+// Init
+const SAMPLE_RATE: u32 = 44100;
+let mut transceiver = Transceiver::new(SAMPLE_RATE);
+
+// Receive
+loop {
+    let sample: f32 = ...;
+    if let Some(payload) = transceiver.push_sample(sample) {
+        println!("Received: {:?}", payload);
+    }
+}
+
+// Transmit
+let payload = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+for &frequency in transceiver.send(&payload).iter() {
+    for &sample in transceiver.generate_beep(frequency).iter() {
+        // Play sample
+    }
+}
+```
+
 ## Examples
 
 A browser based demo is available at https://unrud.github.io/audio-barcode.
